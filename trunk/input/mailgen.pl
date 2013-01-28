@@ -2,7 +2,7 @@
 
 ############
 #        $Id$
-#Description: Generates SQL batch files with generated emails
+#Description: Generates SQL batch files with the specified number of generated emails.
 #    $Author$ Lionel Aster Mena Garcia
 #      $Date$
 #  $Revision$
