@@ -16,7 +16,7 @@ sub dbConnect {
         # Read database settings from config file:
         my $dsn = "DBI:mysql:database=test";
         my $dbh = DBI->connect( $dsn,
-				'',
+				'layo',
 				'',
                                 { RaiseError => 1 } 
 	);

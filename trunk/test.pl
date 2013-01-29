@@ -1,11 +1,18 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 
-open (MYFILE, 'domain_list.txt');
+use strict;
+use warnings;
 
-@array = <MYFILE>;
-($first, $second, $third, $fourth, $fifth) = @array;
-chomp $first, $second, $third, $fourth, $fifth;
-print "Contents: $second";
+use GUI::DB qw(dbConnect query);
 
- 
-close (MYFILE);
+#testing de DB module
+
+my $dbh = &dbConnect();
+
+#making a query
+
+my $sql = 'SELECT addr FROM mailing WHERE addr = \'s2mh@schone.biz\'';
+my @data = &query($dbh, $sql);
+print $data[0]->{addr};
+
+__END__
