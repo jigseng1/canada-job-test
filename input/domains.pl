@@ -2,32 +2,46 @@
 
 ############
 #        $Id$
-#Description: Select randomly 100000 unique mail domains from domain_list.txt to writing them into domain_list2.txt
+#Description: Select randomly a specified number of unique mail domains from domain_list.txt to writing them into domain_list2.txt
 #             domain_list2.txt is needed to generate the emails samples used in the database.
 #    $Author$ Lionel Aster Mena Garcia
 #      $Date$
 #  $Revision$
 ############
 
-open FILE,"domain_list.txt" or die $!;
-@fin = <FILE>;
-close FILE;
-
-$lines = @fin;
-
-#Generating 
-open FILE,">domain_list2.txt" or die $!;
-@temp;
-for ($i = 1; $i <= 100000; $i++)
+if ($ARGV[2])
 {
-    $index = rand($lines - 1);
-    while (grep( $_ == $index, @temp))
+    my $fin = $ARGV[0];
+    my $fout = $ARGV[1];
+    my $domains_number = $ARGV[2];
+
+    open FILE, $fin or die $!;
+    @domain_input = <FILE>;
+    close FILE;
+
+    $lines = @domain_input;
+
+    #Generating 
+    open(FILE, ">", $fout) or die $!;
+    my @temp;
+    for ($i = 1; $i <= $domains_number; $i++)
     {
-        print "chivato1";
         $index = rand($lines - 1);
+        while (grep( $_ == $index, @temp))
+        {
+            $index = rand($lines - 1);
+        }
+        push(@temp, $index);
+        print FILE "@domain_input[$index]";
+        #print "chivato $i\n";
     }
-    push(@temp, $index);
-    print FILE "@fin[$index]";
+
+    close FILE;
+}
+else
+{
+    print "\nUsage: domain_input.txt domain_output.txt domains_number\n";
+    exit -1;
 }
 
-close FILE;
+__END__
