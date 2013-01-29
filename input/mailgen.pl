@@ -26,7 +26,7 @@ if ($ARGV[1])
     # Set algorithm => "uniform" if uniformness through file is desired
     # It may penalize performance significantly on large files
     my $rnd_domain = File::RandomLine->new($domains_file, {algorithm => "fast"});
-    foreach (0..$ARGV[1])
+    foreach (1..$ARGV[1])
     {
         # User string will always start with a letter, followed by 3 to 10 alphanumeric + '_' chars
         my $email = $rnd_mail->randregex('[a-z]{1}[a-z0-9_]{3,10}') . "@" . $rnd_domain->next;
