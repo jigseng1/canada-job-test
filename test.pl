@@ -6,37 +6,54 @@ use warnings;
 use GUI::DB qw(dbConnect query);
 
 
-#Check a table's existence
+#Checks a table's existence
 #Parameters: Database handler, table name
 #Returns: true if it exists, false otherwise
 sub tableExists
 {
     my $dbh = shift;
     my $table = shift;
+    
     my @tables = $dbh->tables('','','','TABLE');
-    if (@tables)
+    foreach (@tables) 
     {
-        for (@tables)
-        {
-            next unless $_;
-            return 1 if $_ eq $table
-        }
+        return 1 if ($_ =~ /$table/) 
     }
-    else
-    {
-        eval
-        {
-            local $dbh->{PrintError} = 0;
-            local $dbh->{RaiseError} = 1;
-            $dbh->do(qq{SELECT * FROM $table WHERE 1 = 0 });
-        };
-        return 1 unless $@;
-    }
+    # foreach (@tables)
+    # {
+    #     
+    #     print "chivato $table\n";
+    #     return 1 if $_ eq $table
+    # }
     return 0;
 }
 
+#Counts domains ocurrence from the mails table
+#Parameters: DBI array of emails 
+#Returns: dictionary of domains and its occurrences
+sub dailyCount
+{
+    my ($data) = @_;
+    my %elements = ( );
 
-my results_table = "emails_top";
+    foreach my $row (@$data)
+    {
+        my ($f0, $f1) = split(/@/, $row->{addr});
+        if (exists($elements{$f1}))
+        {
+            $elements{$f1}++;
+        }
+        else
+        {
+            $elements{$f1} = 1;
+        }
+        
+    }
+    return %elements;  
+}
+
+
+my $results_table = "domains_count";
 
 my $dbh = dbConnect();
 my $sql;
@@ -48,18 +65,27 @@ if (!tableExists($dbh, $results_table))
                 id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, 
                 domain VARCHAR(255) NOT NULL,
                 daily_count INT,
-                cur_timestamp TIMESTAMP(8))";
-    print "creando tabla\n";
+                cur_timestamp TIMESTAMP)";
+    query($dbh, $sql);
 }
-else
+
+#Getting daily mails from the mailing table 
+$sql = 'SELECT addr FROM mailing';
+my @data = query($dbh, $sql);
+
+#Getting the domains counted
+my %domains_count = dailyCount(\@data);
+
+#Sorting the domains by it count
+my @domains = sort {$domains_count{$b} <=> $domains_count{$a}} (keys(%domains_count));
+foreach my $domain (@domains)
 {
-    print "que cojones paso\n";
+   print "[$domain]:\t\t$domains_count{$domain}\n";
 }
 
-
-#making a query
-# $sql = 'SELECT addr FROM mailing WHERE addr = \'s2mh@schone.biz\'';
-# my @data = &query($dbh, $sql);
-# print $data[0]->{addr};
+# while (my ($domain, $ocur) = each(%domains_count))
+# {
+#    print "[$domain]: $ocur\n";
+# }
 
 __END__
