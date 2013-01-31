@@ -5,10 +5,14 @@ use warnings;
 
 use GUI::DB qw(dbConnect query);
 
+our $emails_table = "mailing";
+our $results_table = "domains_count";
 
+#
 #Checks a table's existence
 #Parameters: Database handler, table name
 #Returns: true if it exists, false otherwise
+#
 sub tableExists
 {
     my $dbh = shift;
@@ -19,21 +23,17 @@ sub tableExists
     {
         return 1 if ($_ =~ /$table/) 
     }
-    # foreach (@tables)
-    # {
-    #     
-    #     print "chivato $table\n";
-    #     return 1 if $_ eq $table
-    # }
     return 0;
 }
 
+#
 #Counts domains ocurrence from the mails table
-#Parameters: DBI array of emails 
-#Returns: dictionary of domains and its occurrences
+#Parameters: reference to a DBI array of emails 
+#Returns: hash of domains and its occurrences
+#
 sub dailyCount
 {
-    my ($data) = @_;
+    my ($data) = shift;
     my %elements = ( );
 
     foreach my $row (@$data)
@@ -52,8 +52,21 @@ sub dailyCount
     return %elements;  
 }
 
+#
+#Update de table $results_table with the daily domain's counting
+#Parameters: Database handler, reference to the hash of domain's counting
+#Returns: nothing
+#
+sub updateDomainCount
+{
+    my $dbh = shift;
+    my ($data) = shift;
 
-my $results_table = "domains_count";
+    my $sql = "INSERT INTO $main::results_table (domain, daily_count) VALUES " . join (', ', ("(?,?)") x scalar(keys(%$data)));
+    query($dbh, $sql, %$data);
+}
+
+
 
 my $dbh = dbConnect();
 my $sql;
@@ -69,19 +82,24 @@ if (!tableExists($dbh, $results_table))
     query($dbh, $sql);
 }
 
-#Getting daily mails from the mailing table 
-$sql = 'SELECT addr FROM mailing';
+#Getting daily mails from the $emails_table table 
+$sql = "SELECT addr FROM $emails_table";
 my @data = query($dbh, $sql);
 
 #Getting the domains counted
 my %domains_count = dailyCount(\@data);
 
+#Updating $results_table with daily emails
+updateDomainCount($dbh, \%domains_count);
+
+$dbh->disconnect;
+
 #Sorting the domains by it count
-my @domains = sort {$domains_count{$b} <=> $domains_count{$a}} (keys(%domains_count));
-foreach my $domain (@domains)
-{
-   print "[$domain]:\t\t$domains_count{$domain}\n";
-}
+# my @domains = sort {$domains_count{$b} <=> $domains_count{$a}} (keys(%domains_count));
+# foreach my $domain (@domains)
+# {
+#    print "[$domain]:\t\t$domains_count{$domain}\n";
+# }
 
 # while (my ($domain, $ocur) = each(%domains_count))
 # {
