@@ -4,12 +4,14 @@ use strict;
 use warnings;
 
 use GUI::DB qw(dbConnect query);
+use POSIX;
 
 # DB TABLES
 our $emails_table = "mailing";
 our $results_table = "domains_count";
 
-#
+
+#tableExists($dbh, 'table_name')
 #Checks a table's existence
 #Parameters: Database handler, table name
 #Returns: true if it exists, false otherwise
@@ -27,7 +29,7 @@ sub tableExists
     return 0;
 }
 
-#
+#dailyCount(\@data)
 #Counts domains ocurrence from the mails table
 #Parameters: reference to a DBI array of emails 
 #Returns: hash of domains and its occurrences
@@ -53,30 +55,15 @@ sub dailyCount
     return %elements;  
 }
 
-#
-#Updates the table $results_table with the daily domain's counting
-#Parameters: Database handler, reference to the hash of domain's counting
-#Returns: nothing
-#
-sub updateDomainCount
-{
-    my $dbh = shift;
-    my ($data) = shift;
-
-    my $sql = "INSERT INTO $main::results_table (domain, daily_count) VALUES " . join (', ', ("(?,?)") x scalar(keys(%$data)));
-    query($dbh, $sql, %$data);
-}
-
-
-#
-#Calculates the top 50s domains by count
+#top50($dbh)
+#Calculates the top 50 domains by count
 #Parameters: Database handler,
-#Returns: Array with the top 50 domains
+#Returns: Array of the query (array of hashe's references) with the top 50 domains
 #
 sub top50
 {
     my $dbh = shift;
-    my %dtop = ();
+    my %tmp = ();
 
     # my $sql = "SELECT  domain, max(daily_count) from $results_table GROUP BY domain";
     my $sql = "SELECT  domain, daily_count
@@ -84,22 +71,55 @@ sub top50
                ORDER BY daily_count DESC";
     my @data = query($dbh, $sql);
 
-    foreach my $row (@data)
+    # I had to use a for loop because of the index modification inside the loop
+    for (my $i = 0; $i <= $#data; $i++)
     {
-        if (!exists($dtop{$row->{domain}}))
+        if (!exists($tmp{$data[$i]->{domain}}))
         {
-            if (scalar(keys(%dtop)) != 50)
-            {
-                $dtop{$row->{domain}} = $row->{daily_count};
-            }
-            else
+            $tmp{$data[$i]->{domain}} = undef;
+            if (scalar(keys(%tmp)) == 50)
             {
                 last;
             }
+            
+        }
+        else
+        {
+            splice(@data, $i, 1);
+            $i--;
+            
         }
     }
 
-    return %dtop;
+    return @data[0..49];
+}
+
+#
+#Calculates the domain's growth percentge of the last 30 days compared to the total
+#Parameters: Database handler, query array with the top 50 domains
+#Returns: query array modified to include the growth percentage of each doamin
+#
+sub growthEvolution
+{
+    my $dbh = shift;
+    my @dtop = @_;
+
+    foreach my $row (@dtop)
+    {
+        my $sql = "SELECT * FROM $results_table 
+                   WHERE domain = ? AND  (CURDATE() - INTERVAL 30 DAY) <= cur_timestamp
+                   ORDER BY cur_timestamp ASC";
+        my @data = query($dbh, $sql, $row->{domain});
+
+        #calculating the growth percentage of the last 30 days
+        #growth = [(Vpresent - Vpast) / Vpast] * 100
+        my $v_past = $data[0]->{daily_count};
+        my $v_present = $row->{daily_count};
+        $row->{growth_last} = floor((($v_present - $v_past) / $v_past) * 100);
+        print "$row->{growth_last}";<>;
+    }
+
+    return @dtop;
 }
 
 
@@ -125,14 +145,18 @@ $sql = "SELECT addr FROM $emails_table";
 # my %domains_count = dailyCount(\@data);
 
 #Updating $results_table with daily emails
-# updateDomainCount($dbh, \%domains_count);
+# $sql = "INSERT INTO $results_table (domain, daily_count) VALUES " . join (', ', ("(?,?)") x scalar(keys(%domains_count)));
+# query($dbh, $sql, %domains_count);
 
 #Getting the top 50 domain
-my %dtop = top50($dbh);
-my @domains = sort {$dtop{$b} <=> $dtop{$a}} (keys(%dtop));
-foreach my $domain (@domains)
+my @dtop = top50($dbh);
+
+@dtop = growthEvolution($dbh, @dtop);
+my $index = 1;
+foreach my $row (@dtop)
 {
-    print "[$domain]: \t $dtop{$domain}\n";
+    print "$index [$row->{domain}]: \t $row->{growth_last}\n";
+    $index++;
 }
 
 $dbh->disconnect();
