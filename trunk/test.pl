@@ -41,14 +41,14 @@ sub dailyCount
 
     foreach my $row (@$data)
     {
-        my ($f0, $f1) = split(/@/, $row->{addr});
-        if (exists($elements{$f1}))
+        my ($username, $domain) = split(/@/, $row->{addr});
+        if (exists($elements{$domain}))
         {
-            $elements{$f1}++;
+            $elements{$domain}++;
         }
         else
         {
-            $elements{$f1} = 1;
+            $elements{$domain} = 1;
         }
         
     }
@@ -96,8 +96,8 @@ sub top50
 
 #
 #Calculates the domain's growth percentge of the last 30 days compared to the total
-#Parameters: Database handler, query array with the top 50 domains
-#Returns: query array modified to include the growth percentage of each doamin
+#Parameters: Database handler, DBI query array with the top 50 domains
+#Returns: DBI query array modified to include the growth percentage of each doamin
 #
 sub growthEvolution
 {
@@ -116,7 +116,6 @@ sub growthEvolution
         my $v_past = $data[0]->{daily_count};
         my $v_present = $row->{daily_count};
         $row->{growth_last} = floor((($v_present - $v_past) / $v_past) * 100);
-        print "$row->{growth_last}";<>;
     }
 
     return @dtop;
@@ -152,10 +151,14 @@ $sql = "SELECT addr FROM $emails_table";
 my @dtop = top50($dbh);
 
 @dtop = growthEvolution($dbh, @dtop);
+
+#Sorting the domains by its growth percentages
+my @dtop_sorted = sort {$b->{growth_last} <=> $a->{growth_last}} @dtop;
+
 my $index = 1;
-foreach my $row (@dtop)
+foreach my $row (@dtop_sorted)
 {
-    print "$index [$row->{domain}]: \t $row->{growth_last}\n";
+    print "$index [$row->{domain}]:\t\t$row->{daily_count} \t$row->{growth_last}%\n";
     $index++;
 }
 
