@@ -1,0 +1,13 @@
+.
+./input
+./input/domain_list.txt
+./input/mailgen.pl
+./MANIFEST
+./output
+./output/report1.txt
+./tableUpdate.pl
+./test.txt
+./domreport.pl
+./README.txt
+./GUI
+./GUI/DB.pm
