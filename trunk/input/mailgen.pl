@@ -14,7 +14,7 @@ use warnings;
 use File::RandomLine;
 use String::Random;
 
-my $domains_file = 'domain_list2.txt';
+my $domains_file = 'domain_list.txt';
 
 if ($ARGV[1])
 {
