@@ -68,7 +68,7 @@ sub top50
     # my $sql = "SELECT  domain, max(daily_count) from $results_table GROUP BY domain";
     my $sql = "SELECT  domain, daily_count
                FROM $results_table 
-               ORDER BY daily_count DESC";
+               ORDER BY daily_count DESC LIMIT 500";
     my @data = query($dbh, $sql);
 
     # I had to use a for loop because of the index modification inside the loop
@@ -106,9 +106,9 @@ sub growthEvolution
 
     foreach my $row (@dtop)
     {
-        my $sql = "SELECT * FROM $results_table 
+        my $sql = "SELECT domain, daily_count FROM $results_table 
                    WHERE domain = ? AND  (CURDATE() - INTERVAL 30 DAY) <= cur_timestamp
-                   ORDER BY cur_timestamp ASC";
+                   ORDER BY cur_timestamp ASC LIMIT 1";
         my @data = query($dbh, $sql, $row->{domain});
 
         #calculating the growth percentage of the last 30 days
@@ -116,6 +116,16 @@ sub growthEvolution
         my $v_past = $data[0]->{daily_count};
         my $v_present = $row->{daily_count};
         $row->{growth_last} = floor((($v_present - $v_past) / $v_past) * 100);
+
+        # $sql = "SELECT domain, daily_count FROM $results_table 
+        #            WHERE domain = ? AND  (CURDATE() - INTERVAL 1 YEAR) <= cur_timestamp
+        #            ORDER BY cur_timestamp ASC LIMIT 1";
+        # @data = query($dbh, $sql, $row->{domain});
+
+        # #calculating the growth percentage of the last 1 year (assumed as the total to compare with)
+        # #growth = [(Vpresent - Vpast) / Vpast] * 100
+        # $v_past = $data[0]->{daily_count};
+        # $row->{growth_year} = floor((($v_present - $v_past) / $v_past) * 100);
     }
 
     return @dtop;
@@ -137,13 +147,13 @@ if (!tableExists($dbh, $results_table))
 }
 
 #Getting daily mails from the $emails_table table 
-$sql = "SELECT addr FROM $emails_table";
+# $sql = "SELECT addr FROM $emails_table";
 # my @data = query($dbh, $sql);
 
-#Getting the domains counted
+# #Getting the domains counted
 # my %domains_count = dailyCount(\@data);
 
-#Updating $results_table with daily emails
+# #Updating $results_table with daily emails
 # $sql = "INSERT INTO $results_table (domain, daily_count) VALUES " . join (', ', ("(?,?)") x scalar(keys(%domains_count)));
 # query($dbh, $sql, %domains_count);
 
@@ -156,24 +166,14 @@ my @dtop = top50($dbh);
 my @dtop_sorted = sort {$b->{growth_last} <=> $a->{growth_last}} @dtop;
 
 my $index = 1;
+print "#  Domain1             Total Count      30-days Growth\n";
 foreach my $row (@dtop_sorted)
 {
-    print "$index [$row->{domain}]:\t\t$row->{daily_count} \t$row->{growth_last}%\n";
+    printf "%-2u %-23s %-8u %-4u%%\n", $index, $row->{domain}, $row->{daily_count}, $row->{growth_last};
+    print "-------------------------------------------------\n";
     $index++;
 }
 
 $dbh->disconnect();
-
-#Sorting the domains by it count
-# my @domains = sort {$domains_count{$b} <=> $domains_count{$a}} (keys(%domains_count));
-# foreach my $domain (@domains)
-# {
-#    print "[$domain]:\t\t$domains_count{$domain}\n";
-# }
-
-# while (my ($domain, $ocur) = each(%domains_count))
-# {
-#    print "[$domain]: $ocur\n";
-# }
 
 __END__
