@@ -1,5 +1,15 @@
 #!/usr/bin/perl
 
+############
+#        $Id$
+#Description: Given a emails table, this script creates and updates another table which holds a daily count of email 
+#             addresses by their domain name. The new table is used to report the top 50 domains by count sorted by
+#             percentage growth of the last 30 days.
+#    $Author$ Lionel Aster Mena Garcia
+#      $Date$
+#  $Revision$
+############
+
 use strict;
 use warnings;
 
@@ -67,7 +77,7 @@ sub top50
 
     # my $sql = "SELECT  domain, max(daily_count) from $results_table GROUP BY domain";
     my $sql = "SELECT  domain, daily_count
-               FROM $results_table 
+               FROM $results_table
                ORDER BY daily_count DESC LIMIT 500";
     my @data = query($dbh, $sql);
 
@@ -116,16 +126,6 @@ sub growthEvolution
         my $v_past = $data[0]->{daily_count};
         my $v_present = $row->{daily_count};
         $row->{growth_last} = floor((($v_present - $v_past) / $v_past) * 100);
-
-        # $sql = "SELECT domain, daily_count FROM $results_table 
-        #            WHERE domain = ? AND  (CURDATE() - INTERVAL 1 YEAR) <= cur_timestamp
-        #            ORDER BY cur_timestamp ASC LIMIT 1";
-        # @data = query($dbh, $sql, $row->{domain});
-
-        # #calculating the growth percentage of the last 1 year (assumed as the total to compare with)
-        # #growth = [(Vpresent - Vpast) / Vpast] * 100
-        # $v_past = $data[0]->{daily_count};
-        # $row->{growth_year} = floor((($v_present - $v_past) / $v_past) * 100);
     }
 
     return @dtop;
@@ -166,11 +166,11 @@ my @dtop = top50($dbh);
 my @dtop_sorted = sort {$b->{growth_last} <=> $a->{growth_last}} @dtop;
 
 my $index = 1;
-print "#  Domain1             Total Count      30-days Growth\n";
+printf "%-2s %-20s %-8s  %-8s\n","#", "Domain", "Total Count", "30-days Growth (%)";
 foreach my $row (@dtop_sorted)
 {
-    printf "%-2u %-23s %-8u %-4u%%\n", $index, $row->{domain}, $row->{daily_count}, $row->{growth_last};
-    print "-------------------------------------------------\n";
+    print "----------------------------------------------------\n";
+    printf "%-2u %-23s %-11u %-4u%%\n", $index, $row->{domain}, $row->{daily_count}, $row->{growth_last};
     $index++;
 }
 
