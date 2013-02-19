@@ -39,32 +39,6 @@ sub tableExists
     return 0;
 }
 
-#dailyCount(\@data)
-#Counts domains ocurrence from the mails table
-#Parameters: reference to a DBI array of emails 
-#Returns: hash of domains and its occurrences
-#
-sub dailyCount
-{
-    my ($data) = shift;
-    my %elements = ( );
-
-    foreach my $row (@$data)
-    {
-        my ($username, $domain) = split(/@/, $row->{addr});
-        if (exists($elements{$domain}))
-        {
-            $elements{$domain}++;
-        }
-        else
-        {
-            $elements{$domain} = 1;
-        }
-        
-    }
-    return %elements;  
-}
-
 #top50($dbh)
 #Calculates the top 50 domains by count
 #Parameters: Database handler,
@@ -75,13 +49,13 @@ sub top50
     my $dbh = shift;
     my %tmp = ();
 
-    # my $sql = "SELECT  domain, max(daily_count) from $results_table GROUP BY domain";
+    #my $sql = "SELECT  domain, max(daily_count) from $results_table GROUP BY domain";
     my $sql = "SELECT  domain, daily_count
                FROM $results_table
                ORDER BY daily_count DESC LIMIT 500";
     my @data = query($dbh, $sql);
 
-    # I had to use a for loop because of the index modification inside the loop
+    #I had to use a for loop because of the index modification inside the loop
     for (my $i = 0; $i <= $#data; $i++)
     {
         if (!exists($tmp{$data[$i]->{domain}}))
@@ -104,7 +78,7 @@ sub top50
     return @data[0..49];
 }
 
-#
+#growthEvolution($dbh, @dtop)
 #Calculates the domain's growth percentge of the last 30 days compared to the total
 #Parameters: Database handler, DBI query array with the top 50 domains
 #Returns: DBI query array modified to include the growth percentage of each doamin
@@ -135,6 +109,7 @@ sub growthEvolution
 my $dbh = dbConnect();
 my $sql;
 
+######### COUNTING & UPDATE SECTION ############
 #creating the results database
 if (!tableExists($dbh, $results_table))
 {
@@ -146,18 +121,26 @@ if (!tableExists($dbh, $results_table))
     query($dbh, $sql);
 }
 
-#Getting daily mails from the $emails_table table 
-# $sql = "SELECT addr FROM $emails_table";
-# my @data = query($dbh, $sql);
 
-# #Getting the domains counted
-# my %domains_count = dailyCount(\@data);
+# Getting daily mails from the $emails_table table 
+$sql = "SELECT addr FROM $emails_table";
+my @data = query($dbh, $sql);
 
-# #Updating $results_table with daily emails
-# $sql = "INSERT INTO $results_table (domain, daily_count) VALUES " . join (', ', ("(?,?)") x scalar(keys(%domains_count)));
-# query($dbh, $sql, %domains_count);
+#Getting the domains counted
+my %domains_count;
 
-#Getting the top 50 domain
+#This method is a little bit faster but requires more memory
+# $elements{ substr($_, 1 + index($_, '@')) }++ for @$data;
+$domains_count{ (split /\@/, $_->{'addr'})[1] }++ for @data;
+
+
+#Updating $results_table with daily emails
+$sql = "INSERT INTO $results_table (domain, daily_count) VALUES " . join (', ', ("(?,?)") x scalar(keys(%domains_count)));
+query($dbh, $sql, %domains_count);
+
+
+######### REPORT SECTION ############
+# Getting the top 50 domain
 my @dtop = top50($dbh);
 
 @dtop = growthEvolution($dbh, @dtop);
