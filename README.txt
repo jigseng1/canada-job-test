@@ -24,7 +24,7 @@ System's development specifications: perl v5.14.2
 
             Usage: tableUpdate.pl emails_file [-t]
 
-    Take into consideration, that the table created/used to report the top 50 domains has a timestamp type column
+    Take into consideration, that the table created/used to report the top 50 domains has a timestamp type column. This means that several days simulations should be done in real-time, otherwise this column must be modified manually to simulate and obtain reports properly. 
 
 # Script domreport.pl:              
 
